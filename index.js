@@ -26,14 +26,29 @@ app.post("/send-sms", async (req, res) => {
 
 app.post("/start-conference", async (req, res) => {
   try {
-    const calls = await Promise.all(req.body.numbers.map(number => 
+    const { numbers, userNumber } = req.body;
+    
+    // Call emergency contacts
+    const contactCalls = await Promise.all(numbers.map(number => 
       client.calls.create({
         url: "https://handler.twilio.com/twiml/EH4bb012a10ef489bc78579d2a44676e73",
         to: number,
         from: process.env.TWILIO_NUMBER
       })
     ));
-    res.json({ success: true, sids: calls.map(c => c.sid) });
+
+    // Call app user's phone
+    const userCall = await client.calls.create({
+      url: "https://handler.twilio.com/twiml/EH4bb012a10ef489bc78579d2a44676e73",
+      to: userNumber,
+      from: process.env.TWILIO_NUMBER
+    });
+
+    res.json({ 
+      success: true, 
+      contactCalls: contactCalls.map(c => c.sid),
+      userCall: userCall.sid
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
